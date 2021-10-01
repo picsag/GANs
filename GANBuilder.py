@@ -1,12 +1,15 @@
 import os
 import logging
 import tensorflow as tf
+import matplotlib
 import matplotlib.pyplot as plt
 from tensorflow.keras.models import Sequential, Model, load_model
 from tensorflow.keras.layers import Conv2D, Flatten, LeakyReLU, Dense, BatchNormalization, \
     Reshape, Conv2DTranspose, Dropout
 
 import numpy as np
+
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
 
 class GANBuilder(object):
@@ -17,6 +20,8 @@ class GANBuilder(object):
         self.batch_size = config['BATCH_SIZE']
         self.dataset = dataset
         self.use_case = use_case
+        self.random_input_size = config['RANDOM_INPUT_SIZE']
+        self.cross_entropy = tf.keras.losses.BinaryCrossentropy(from_logits=True)
         if self.use_case == 'MNIST':
             self.discriminator_model = self.build_discriminator_model_MNIST()
             self.generator_model = self.build_generator_model_MNIST()
@@ -25,8 +30,7 @@ class GANBuilder(object):
             self.generator_model = self.build_generator_model_CIFAR10()
         else:
             logging.log('ERROR', f"Could not load settings for use case: {self.use_case}")
-        self.random_input_size = config['RANDOM_INPUT_SIZE']
-        self.cross_entropy = tf.keras.losses.BinaryCrossentropy(from_logits=True)
+
         self.checkpoint_filepath = 'C:/WORK/Projects/GANs/checkpoint_' + self.use_case + '/input_size_' + \
                                    str(self.random_input_size)
 
@@ -55,7 +59,7 @@ class GANBuilder(object):
 
         return model
 
-    def build_discriminator_model_CIFAR10(self, dropout=0.4, in_shape=(32,32,3)):
+    def build_discriminator_model_CIFAR10(self, dropout=0.4, in_shape=(32, 32, 3)):
         model = Sequential()
         # normal
         model.add(Conv2D(64, (3, 3), padding='same', input_shape=in_shape))
@@ -71,7 +75,7 @@ class GANBuilder(object):
         model.add(LeakyReLU(alpha=0.2))
         # classifier
         model.add(Flatten())
-        model.add(dropout)
+        model.add(Dropout(dropout))
         model.add(Dense(1, activation='sigmoid'))
         # compile model
         opt = tf.optimizers.Adam(lr=0.0002, beta_1=0.5)
@@ -155,9 +159,27 @@ class GANBuilder(object):
         print(f"Generator loss: {np.mean(gen_loss)} -- Discriminator loss: {np.mean(disc_loss)}")
 
     def train_GAN(self):
-        self.discriminator_model(np.random.rand(1, 28, 28, 1).astype("float32"))
+
+        # self.discriminator_model(np.random.rand(1, 28, 28, 1).astype("float32"))
 
         for _ in range(self.config['EPOCHS']):
             for images in self.dataset:
                 images = tf.cast(images, tf.dtypes.float32)
                 self.train_step(images)
+
+    def generate_images(self, n_samples):
+        # generate points in latent space as input for the generator
+        # generate points in the latent space
+        x_input = np.randn(self.random_input_size * n_samples)
+        # reshape into a batch of inputs for the network
+        x_input = x_input.reshape(n_samples, self.random_input_size)
+        predictions = self.generator_model(x_input, training=False)
+
+        for i in range(predictions.shape[0]):
+            # img = predictions[i, :, :, :] * 127.5 + 127.5
+            # matplotlib.image.imsave('name.png', )
+            plt.imshow(predictions[i, :, :, :] * 127.5 + 127.5)
+            plt.axis('off')
+            plt.savefig(f"predicted_image_{i}.png")
+
+        return predictions
