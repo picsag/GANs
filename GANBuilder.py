@@ -31,7 +31,7 @@ class GANBuilder(object):
         else:
             logging.log('ERROR', f"Could not load settings for use case: {self.use_case}")
 
-        self.checkpoint_filepath = 'C:/WORK/Projects/GANs/checkpoint_' + self.use_case + '/input_size_' + \
+        self.checkpoint_filepath = 'D:/Projects/GANs/checkpoint_' + self.use_case + '/input_size_' + \
                                    str(self.random_input_size)
 
     def get_generator_model(self):
