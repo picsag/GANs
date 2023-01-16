@@ -36,3 +36,5 @@ if __name__ == '__main__':
 
     GAN_net.train_GAN()
 
+    GAN_net.generate_images(10)
+
